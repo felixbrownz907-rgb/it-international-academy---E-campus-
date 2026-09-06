@@ -17,9 +17,7 @@
         .dash-brand { display: flex; align-items: center; gap: 12px; }
         .dash-logo { width: 44px; height: 44px; object-fit: contain; border-radius: 6px; }
         .dash-title { color: #ffffff; font-family: 'Poppins', 'Inter', Arial, sans-serif; font-weight: 600; font-size: 18px; }
-        .back-nav {
-            color: #4FC3E8; text-decoration: none; font-size: 14px; font-weight: 600;
-        }
+        .back-nav { color: #4FC3E8; text-decoration: none; font-size: 14px; font-weight: 600; }
         .course-main { max-width: 900px; margin: 0 auto; padding: 40px 6%; }
         .course-header { margin-bottom: 30px; }
         .course-header h1 { font-size: 26px; color: #0A1628; margin-bottom: 6px; }
@@ -42,10 +40,40 @@
             font-weight: 600; cursor: pointer;
         }
         .mark-button:hover { background: #1E5A8C; }
-        .mark-button.done {
-            background: #e8f7f0; color: #1a9e5c; cursor: default;
-        }
+        .mark-button.done { background: #e8f7f0; color: #1a9e5c; cursor: default; }
         .dash-empty { color: #9aa8b8; font-size: 14px; }
+
+        .assignment-item, .quiz-item {
+            padding: 16px 0; border-bottom: 1px solid #eef1f4;
+        }
+        .assignment-item:last-child, .quiz-item:last-child { border-bottom: none; }
+        .item-title { font-weight: 600; color: #0A1628; font-size: 15px; margin-bottom: 4px; }
+        .item-meta { color: #9aa8b8; font-size: 12px; margin-bottom: 10px; }
+        .item-desc { color: #5a6b7d; font-size: 13px; margin-bottom: 12px; }
+
+        textarea {
+            width: 100%; min-height: 90px; padding: 10px; border: 1px solid #dbe2ea;
+            border-radius: 8px; font-family: 'Inter', Arial, sans-serif; font-size: 13px;
+            resize: vertical; margin-bottom: 10px;
+        }
+        .submit-button {
+            background: #0A1628; color: #ffffff; border: none;
+            padding: 8px 16px; border-radius: 6px; font-size: 13px;
+            font-weight: 600; cursor: pointer;
+        }
+        .submit-button:hover { background: #1E5A8C; }
+        .status-badge {
+            display: inline-block; padding: 4px 10px; border-radius: 6px;
+            font-size: 12px; font-weight: 600;
+        }
+        .status-submitted { background: #e8f7f0; color: #1a9e5c; }
+
+        .quiz-question { margin-bottom: 16px; }
+        .quiz-question p { font-size: 14px; color: #0A1628; margin-bottom: 8px; font-weight: 600; }
+        .quiz-option { display: block; margin-bottom: 6px; font-size: 13px; color: #5a6b7d; }
+        .quiz-result { margin-top: 12px; padding: 12px; border-radius: 8px; font-size: 14px; font-weight: 600; }
+        .quiz-result.pass { background: #e8f7f0; color: #1a9e5c; }
+        .quiz-result.fail { background: #fdecea; color: #c0392b; }
     </style>
 </head>
 <body>
@@ -65,8 +93,16 @@
         <p id="courseMeta"></p>
     </div>
 
-    <div id="unitsContainer">
-        <p class="dash-empty">Loading units...</p>
+    <div id="unitsContainer"><p class="dash-empty">Loading units...</p></div>
+
+    <div class="unit-block">
+        <h2>Assignments</h2>
+        <div id="assignmentsContainer"><p class="dash-empty">Loading...</p></div>
+    </div>
+
+    <div class="unit-block">
+        <h2>Quizzes</h2>
+        <div id="quizzesContainer"><p class="dash-empty">Loading...</p></div>
     </div>
 
 </main>
@@ -77,20 +113,15 @@
     const params = new URLSearchParams(window.location.search);
     const courseId = params.get('id');
     let currentStudentId = null;
+    let unitIds = [];
 
     async function loadCourse() {
         const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-        if (userError || !user) {
-            window.location.href = 'student-login.html';
-            return;
-        }
+        if (userError || !user) { window.location.href = 'student-login.html'; return; }
         currentStudentId = user.id;
 
         const { data: course, error: courseError } = await supabaseClient
-            .from('courses')
-            .select('*')
-            .eq('id', courseId)
-            .single();
+            .from('courses').select('*').eq('id', courseId).single();
 
         if (courseError || !course) {
             document.getElementById('courseName').textContent = 'Course not found';
@@ -100,7 +131,9 @@
         document.getElementById('courseName').textContent = course.name;
         document.getElementById('courseMeta').textContent = `${course.department || ''} · ${course.duration || ''}`;
 
-        loadUnits();
+        await loadUnits();
+        loadAssignments();
+        loadQuizzes();
     }
 
     async function loadUnits() {
@@ -117,14 +150,14 @@
             return;
         }
 
+        unitIds = units.map(u => u.id);
+
         const { data: progress } = await supabaseClient
             .from('ecampus_topic_progress')
             .select('topic_id, completed')
             .eq('student_id', currentStudentId);
 
-        const completedSet = new Set(
-            (progress || []).filter(p => p.completed).map(p => p.topic_id)
-        );
+        const completedSet = new Set((progress || []).filter(p => p.completed).map(p => p.topic_id));
 
         container.innerHTML = units.map(unit => {
             const topics = (unit.topics || []).sort((a, b) => a.order_index - b.order_index);
@@ -133,21 +166,12 @@
                 return `
                     <div class="topic-item">
                         <span class="topic-name ${isDone ? 'completed' : ''}">${topic.title}</span>
-                        <button
-                            class="mark-button ${isDone ? 'done' : ''}"
-                            onclick="markComplete('${topic.id}', this)"
-                            ${isDone ? 'disabled' : ''}
-                        >${isDone ? 'Completed' : 'Mark Complete'}</button>
+                        <button class="mark-button ${isDone ? 'done' : ''}" onclick="markComplete('${topic.id}', this)" ${isDone ? 'disabled' : ''}>${isDone ? 'Completed' : 'Mark Complete'}</button>
                     </div>
                 `;
             }).join('');
 
-            return `
-                <div class="unit-block">
-                    <h2>${unit.title}</h2>
-                    ${topicsHtml || '<p class="dash-empty">No topics yet.</p>'}
-                </div>
-            `;
+            return `<div class="unit-block"><h2>${unit.title}</h2>${topicsHtml || '<p class="dash-empty">No topics yet.</p>'}</div>`;
         }).join('');
     }
 
@@ -157,12 +181,7 @@
 
         const { error } = await supabaseClient
             .from('ecampus_topic_progress')
-            .upsert({
-                student_id: currentStudentId,
-                topic_id: topicId,
-                completed: true,
-                completed_at: new Date().toISOString()
-            }, { onConflict: 'student_id,topic_id' });
+            .upsert({ student_id: currentStudentId, topic_id: topicId, completed: true, completed_at: new Date().toISOString() }, { onConflict: 'student_id,topic_id' });
 
         if (error) {
             buttonEl.disabled = false;
@@ -174,6 +193,168 @@
         buttonEl.textContent = 'Completed';
         buttonEl.classList.add('done');
         buttonEl.previousElementSibling?.classList.add('completed');
+    }
+
+    async function loadAssignments() {
+        const container = document.getElementById('assignmentsContainer');
+        if (unitIds.length === 0) { container.innerHTML = '<p class="dash-empty">No assignments yet.</p>'; return; }
+
+        const { data: assignments } = await supabaseClient
+            .from('assignments').select('*').in('unit_id', unitIds);
+
+        if (!assignments || assignments.length === 0) {
+            container.innerHTML = '<p class="dash-empty">No assignments yet.</p>';
+            return;
+        }
+
+        const { data: mySubmissions } = await supabaseClient
+            .from('ecampus_submissions')
+            .select('assignment_id')
+            .eq('student_id', currentStudentId);
+
+        const submittedSet = new Set((mySubmissions || []).map(s => s.assignment_id));
+
+        container.innerHTML = assignments.map(a => {
+            const isSubmitted = submittedSet.has(a.id);
+            const dueText = a.due_date ? `Due ${new Date(a.due_date).toLocaleDateString()}` : '';
+            return `
+                <div class="assignment-item">
+                    <div class="item-title">${a.title}</div>
+                    <div class="item-meta">${dueText}</div>
+                    <div class="item-desc">${a.description || ''}</div>
+                    ${isSubmitted
+                        ? '<span class="status-badge status-submitted">Submitted</span>'
+                        : `
+                            <textarea id="answer-${a.id}" placeholder="Type your answer here..."></textarea>
+                            <button class="submit-button" onclick="submitAssignment('${a.id}', this)">Submit</button>
+                        `
+                    }
+                </div>
+            `;
+        }).join('');
+    }
+
+    async function submitAssignment(assignmentId, buttonEl) {
+        const textarea = document.getElementById(`answer-${assignmentId}`);
+        const content = textarea.value.trim();
+
+        if (!content) { alert('Please write your answer before submitting.'); return; }
+
+        buttonEl.disabled = true;
+        buttonEl.textContent = 'Submitting...';
+
+        const { error } = await supabaseClient
+            .from('ecampus_submissions')
+            .insert({ assignment_id: assignmentId, student_id: currentStudentId, content: content, status: 'submitted' });
+
+        if (error) {
+            buttonEl.disabled = false;
+            buttonEl.textContent = 'Submit';
+            alert('Could not submit. Please try again.');
+            return;
+        }
+
+        loadAssignments();
+    }
+
+    async function loadQuizzes() {
+        const container = document.getElementById('quizzesContainer');
+        if (unitIds.length === 0) { container.innerHTML = '<p class="dash-empty">No quizzes yet.</p>'; return; }
+
+        const { data: quizzes } = await supabaseClient
+            .from('quizzes').select('*, quiz_questions(*)').in('unit_id', unitIds);
+
+        if (!quizzes || quizzes.length === 0) {
+            container.innerHTML = '<p class="dash-empty">No quizzes yet.</p>';
+            return;
+        }
+
+        const { data: attempts } = await supabaseClient
+            .from('quiz_attempts')
+            .select('quiz_id, score, passed')
+            .eq('student_id', currentStudentId);
+
+        const attemptMap = {};
+        (attempts || []).forEach(a => attemptMap[a.quiz_id] = a);
+
+        container.innerHTML = quizzes.map(q => {
+            const attempt = attemptMap[q.id];
+            const questions = q.quiz_questions || [];
+
+            if (attempt) {
+                return `
+                    <div class="quiz-item">
+                        <div class="item-title">${q.title}</div>
+                        <div class="quiz-result ${attempt.passed ? 'pass' : 'fail'}">
+                            ${attempt.passed ? 'Passed' : 'Not passed'} — Score: ${attempt.score}%
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (questions.length === 0) {
+                return `
+                    <div class="quiz-item">
+                        <div class="item-title">${q.title}</div>
+                        <div class="item-meta">Pass mark: ${q.pass_percentage}%</div>
+                        <p class="dash-empty">No questions added yet.</p>
+                    </div>
+                `;
+            }
+
+            const questionsHtml = questions.map((qq, i) => {
+                const options = qq.options || [];
+                return `
+                    <div class="quiz-question">
+                        <p>${i + 1}. ${qq.question_text}</p>
+                        ${options.map(opt => `
+                            <label class="quiz-option">
+                                <input type="radio" name="q-${qq.id}" value="${opt}"> ${opt}
+                            </label>
+                        `).join('')}
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <div class="quiz-item">
+                    <div class="item-title">${q.title}</div>
+                    <div class="item-meta">Pass mark: ${q.pass_percentage}%</div>
+                    <div id="quiz-form-${q.id}">
+                        ${questionsHtml}
+                        <button class="submit-button" onclick="submitQuiz('${q.id}', ${q.pass_percentage})">Submit Quiz</button>
+                    </div>
+                    <div id="quiz-result-${q.id}"></div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    async function submitQuiz(quizId, passPercentage) {
+        const { data: questions } = await supabaseClient
+            .from('quiz_questions').select('*').eq('quiz_id', quizId);
+
+        let correct = 0;
+        questions.forEach(q => {
+            const selected = document.querySelector(`input[name="q-${q.id}"]:checked`);
+            if (selected && selected.value === q.correct_answer) correct++;
+        });
+
+        const score = Math.round((correct / questions.length) * 100);
+        const passed = score >= passPercentage;
+
+        const { error } = await supabaseClient
+            .from('quiz_attempts')
+            .insert({ quiz_id: quizId, student_id: currentStudentId, score: score, passed: passed });
+
+        if (error) { alert('Could not save quiz result. Please try again.'); return; }
+
+        document.getElementById(`quiz-form-${quizId}`).style.display = 'none';
+        document.getElementById(`quiz-result-${quizId}`).innerHTML = `
+            <div class="quiz-result ${passed ? 'pass' : 'fail'}">
+                ${passed ? 'Passed' : 'Not passed'} — Score: ${score}%
+            </div>
+        `;
     }
 
     loadCourse();
