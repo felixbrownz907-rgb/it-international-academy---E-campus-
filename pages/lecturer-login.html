@@ -174,7 +174,7 @@
         const { data: lecturerData, error: lecturerError } = await supabaseClient
             .from('lecturers')
             .select('*')
-            .eq('id', authData.user.id)
+            .eq('auth_id', authData.user.id)
             .single();
 
         if (lecturerError || !lecturerData) {
