@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Login | E-Campus</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="auth.css">
+</head>
+<body>
+
+<div class="auth-page">
+
+    <div class="auth-card">
+
+        <img
+            src="https://pub-b3e2d39712e84119875e84c5ec5f5c09.r2.dev/Logo/WA_1788713784402.jpeg"
+            alt="IT International Academy Logo"
+            class="auth-logo"
+        >
+
+        <h1>Student Login</h1>
+        <p class="auth-subtitle">Sign in to continue your learning</p>
+
+        <form id="loginForm">
+            <label for="email">Email</label>
+            <input type="email" id="email" required placeholder="you@example.com">
+
+            <label for="password">Password</label>
+            <input type="password" id="password" required placeholder="Enter your password">
+
+            <div id="errorMsg" class="error-msg" style="display:none;"></div>
+
+            <button type="submit" class="auth-button">Login</button>
+        </form>
+
+        <a href="../index.html" class="back-link">← Back to Home</a>
+
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../supabase-config.js"></script>
+<script src="student-login.js"></script>
+
+</body>
+</html>
