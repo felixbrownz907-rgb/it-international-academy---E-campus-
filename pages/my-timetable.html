@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Timetable | E-Campus</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        body { background: #f5f7fa; }
+        .dash-header {
+            width: 100%; min-height: 72px; background: #0A1628;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 12px 6%; position: sticky; top: 0; z-index: 1000;
+        }
+        .dash-brand { display: flex; align-items: center; gap: 12px; }
+        .dash-logo { width: 44px; height: 44px; object-fit: contain; border-radius: 6px; }
+        .dash-title { color: #ffffff; font-family: 'Poppins', 'Inter', Arial, sans-serif; font-weight: 600; font-size: 18px; }
+        .back-nav { color: #4FC3E8; text-decoration: none; font-size: 14px; font-weight: 600; }
+        .page-main { max-width: 900px; margin: 0 auto; padding: 40px 6%; }
+        .page-header h1 { font-size: 26px; color: #0A1628; margin-bottom: 20px; }
+
+        .day-block {
+            background: #ffffff; border: 1px solid #dbe2ea; border-radius: 14px;
+            padding: 20px 24px; margin-bottom: 16px;
+        }
+        .day-title { font-size: 16px; font-weight: 700; color: #0A1628; margin-bottom: 12px; }
+        .class-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 0; border-bottom: 1px solid #eef1f4;
+        }
+        .class-item:last-child { border-bottom: none; }
+        .class-name { font-size: 14px; color: #0A1628; font-weight: 600; }
+        .class-time { font-size: 13px; color: #5a6b7d; }
+        .dash-empty { color: #9aa8b8; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+<header class="dash-header">
+    <div class="dash-brand">
+        <img src="https://pub-b3e2d39712e84119875e84c5ec5f5c09.r2.dev/Logo/WA_1788713784402.jpeg" alt="Logo" class="dash-logo">
+        <span class="dash-title">E-Campus</span>
+    </div>
+    <a href="student-dashboard.html" class="back-nav">← Back to Dashboard</a>
+</header>
+
+<main class="page-main">
+    <div class="page-header"><h1>My Timetable</h1></div>
+    <div id="timetableContainer"><p class="dash-empty">Loading...</p></div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../supabase-config.js"></script>
+<script>
+    const DAY_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+    async function loadTimetable() {
+        const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+        if (userError || !user) { window.location.href = 'student-login.html'; return; }
+
+        const { data: entries, error } = await supabaseClient
+            .from('timetable')
+            .select('*');
+
+        const container = document.getElementById('timetableContainer');
+
+        if (error || !entries || entries.length === 0) {
+            container.innerHTML = '<p class="dash-empty">No timetable entries yet.</p>';
+            return;
+        }
+
+        const grouped = {};
+        entries.forEach(e => {
+            if (!grouped[e.day]) grouped[e.day] = [];
+            grouped[e.day].push(e);
+        });
+
+        const sortedDays = Object.keys(grouped).sort((a, b) => DAY_ORDER.indexOf(a) - DAY_ORDER.indexOf(b));
+
+        container.innerHTML = sortedDays.map(day => `
+            <div class="day-block">
+                <div class="day-title">${day}</div>
+                ${grouped[day].map(e => `
+                    <div class="class-item">
+                        <span class="class-name">${e.course_name}</span>
+                        <span class="class-time">${e.time_slot}</span>
+                    </div>
+                `).join('')}
+            </div>
+        `).join('');
+    }
+
+    loadTimetable();
+</script>
+
+</body>
+</html>
