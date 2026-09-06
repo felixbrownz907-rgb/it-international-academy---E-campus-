@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course | E-Campus</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        body { background: #f5f7fa; }
+        .dash-header {
+            width: 100%; min-height: 72px; background: #0A1628;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 12px 6%; position: sticky; top: 0; z-index: 1000;
+        }
+        .dash-brand { display: flex; align-items: center; gap: 12px; }
+        .dash-logo { width: 44px; height: 44px; object-fit: contain; border-radius: 6px; }
+        .dash-title { color: #ffffff; font-family: 'Poppins', 'Inter', Arial, sans-serif; font-weight: 600; font-size: 18px; }
+        .back-nav {
+            color: #4FC3E8; text-decoration: none; font-size: 14px; font-weight: 600;
+        }
+        .course-main { max-width: 900px; margin: 0 auto; padding: 40px 6%; }
+        .course-header { margin-bottom: 30px; }
+        .course-header h1 { font-size: 26px; color: #0A1628; margin-bottom: 6px; }
+        .course-header p { color: #5a6b7d; font-size: 14px; }
+        .unit-block {
+            background: #ffffff; border: 1px solid #dbe2ea; border-radius: 14px;
+            padding: 24px; margin-bottom: 20px;
+        }
+        .unit-block h2 { font-size: 18px; color: #0A1628; margin-bottom: 16px; }
+        .topic-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 0; border-bottom: 1px solid #eef1f4;
+        }
+        .topic-item:last-child { border-bottom: none; }
+        .topic-name { font-size: 14px; color: #0A1628; }
+        .topic-name.completed { color: #9aa8b8; text-decoration: line-through; }
+        .mark-button {
+            background: #0A1628; color: #ffffff; border: none;
+            padding: 6px 14px; border-radius: 6px; font-size: 12px;
+            font-weight: 600; cursor: pointer;
+        }
+        .mark-button:hover { background: #1E5A8C; }
+        .mark-button.done {
+            background: #e8f7f0; color: #1a9e5c; cursor: default;
+        }
+        .dash-empty { color: #9aa8b8; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+<header class="dash-header">
+    <div class="dash-brand">
+        <img src="https://pub-b3e2d39712e84119875e84c5ec5f5c09.r2.dev/Logo/WA_1788713784402.jpeg" alt="Logo" class="dash-logo">
+        <span class="dash-title">E-Campus</span>
+    </div>
+    <a href="student-dashboard.html" class="back-nav">← Back to Dashboard</a>
+</header>
+
+<main class="course-main">
+
+    <div class="course-header">
+        <h1 id="courseName">Loading...</h1>
+        <p id="courseMeta"></p>
+    </div>
+
+    <div id="unitsContainer">
+        <p class="dash-empty">Loading units...</p>
+    </div>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../supabase-config.js"></script>
+<script>
+    const params = new URLSearchParams(window.location.search);
+    const courseId = params.get('id');
+    let currentStudentId = null;
+
+    async function loadCourse() {
+        const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+        if (userError || !user) {
+            window.location.href = 'student-login.html';
+            return;
+        }
+        currentStudentId = user.id;
+
+        const { data: course, error: courseError } = await supabaseClient
+            .from('courses')
+            .select('*')
+            .eq('id', courseId)
+            .single();
+
+        if (courseError || !course) {
+            document.getElementById('courseName').textContent = 'Course not found';
+            return;
+        }
+
+        document.getElementById('courseName').textContent = course.name;
+        document.getElementById('courseMeta').textContent = `${course.department || ''} · ${course.duration || ''}`;
+
+        loadUnits();
+    }
+
+    async function loadUnits() {
+        const { data: units, error: unitsError } = await supabaseClient
+            .from('units')
+            .select('id, title, order_index, topics(id, title, order_index)')
+            .eq('course_id', courseId)
+            .order('order_index');
+
+        const container = document.getElementById('unitsContainer');
+
+        if (unitsError || !units || units.length === 0) {
+            container.innerHTML = '<p class="dash-empty">No units added yet.</p>';
+            return;
+        }
+
+        const { data: progress } = await supabaseClient
+            .from('student_progress')
+            .select('topic_id, completed')
+            .eq('student_id', currentStudentId);
+
+        const completedSet = new Set(
+            (progress || []).filter(p => p.completed).map(p => p.topic_id)
+        );
+
+        container.innerHTML = units.map(unit => {
+            const topics = (unit.topics || []).sort((a, b) => a.order_index - b.order_index);
+            const topicsHtml = topics.map(topic => {
+                const isDone = completedSet.has(topic.id);
+                return `
+                    <div class="topic-item">
+                        <span class="topic-name ${isDone ? 'completed' : ''}">${topic.title}</span>
+                        <button
+                            class="mark-button ${isDone ? 'done' : ''}"
+                            onclick="markComplete('${topic.id}', this)"
+                            ${isDone ? 'disabled' : ''}
+                        >${isDone ? 'Completed' : 'Mark Complete'}</button>
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <div class="unit-block">
+                    <h2>${unit.title}</h2>
+                    ${topicsHtml || '<p class="dash-empty">No topics yet.</p>'}
+                </div>
+            `;
+        }).join('');
+    }
+
+    async function markComplete(topicId, buttonEl) {
+        buttonEl.disabled = true;
+        buttonEl.textContent = 'Saving...';
+
+        const { error } = await supabaseClient
+            .from('student_progress')
+            .upsert({
+                student_id: currentStudentId,
+                topic_id: topicId,
+                completed: true,
+                completed_at: new Date().toISOString()
+            }, { onConflict: 'student_id,topic_id' });
+
+        if (error) {
+            buttonEl.disabled = false;
+            buttonEl.textContent = 'Mark Complete';
+            alert('Could not save progress. Please try again.');
+            return;
+        }
+
+        buttonEl.textContent = 'Completed';
+        buttonEl.classList.add('done');
+        buttonEl.previousElementSibling?.classList.add('completed');
+    }
+
+    loadCourse();
+</script>
+
+</body>
+</html>
