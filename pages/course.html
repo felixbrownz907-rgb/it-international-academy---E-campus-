@@ -118,7 +118,7 @@
         }
 
         const { data: progress } = await supabaseClient
-            .from('student_progress')
+            .from('ecampus_topic_progress')
             .select('topic_id, completed')
             .eq('student_id', currentStudentId);
 
@@ -156,7 +156,7 @@
         buttonEl.textContent = 'Saving...';
 
         const { error } = await supabaseClient
-            .from('student_progress')
+            .from('ecampus_topic_progress')
             .upsert({
                 student_id: currentStudentId,
                 topic_id: topicId,
