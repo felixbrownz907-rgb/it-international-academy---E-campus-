@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Attendance | E-Campus</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        body { background: #f5f7fa; }
+        .dash-header {
+            width: 100%; min-height: 72px; background: #0A1628;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 12px 6%; position: sticky; top: 0; z-index: 1000;
+        }
+        .dash-brand { display: flex; align-items: center; gap: 12px; }
+        .dash-logo { width: 44px; height: 44px; object-fit: contain; border-radius: 6px; }
+        .dash-title { color: #ffffff; font-family: 'Poppins', 'Inter', Arial, sans-serif; font-weight: 600; font-size: 18px; }
+        .back-nav { color: #4FC3E8; text-decoration: none; font-size: 14px; font-weight: 600; }
+        .page-main { max-width: 900px; margin: 0 auto; padding: 40px 6%; }
+        .page-header h1 { font-size: 26px; color: #0A1628; margin-bottom: 20px; }
+
+        .stat-row { display: flex; gap: 14px; margin-bottom: 24px; }
+        .stat-box {
+            flex: 1; background: #ffffff; border: 1px solid #dbe2ea; border-radius: 14px;
+            padding: 18px; text-align: center;
+        }
+        .stat-number { font-size: 22px; font-weight: 700; color: #0A1628; }
+        .stat-label { font-size: 12px; color: #5a6b7d; margin-top: 4px; }
+
+        .attendance-card {
+            background: #ffffff; border: 1px solid #dbe2ea; border-radius: 14px; padding: 24px;
+        }
+        .attendance-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 0; border-bottom: 1px solid #eef1f4;
+        }
+        .attendance-item:last-child { border-bottom: none; }
+        .attendance-date { font-size: 14px; color: #0A1628; }
+        .status-badge { padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+        .status-present { background: #e8f7f0; color: #1a9e5c; }
+        .status-absent { background: #fdecea; color: #c0392b; }
+        .status-late { background: #fff6e0; color: #b8860b; }
+        .dash-empty { color: #9aa8b8; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+<header class="dash-header">
+    <div class="dash-brand">
+        <img src="https://pub-b3e2d39712e84119875e84c5ec5f5c09.r2.dev/Logo/WA_1788713784402.jpeg" alt="Logo" class="dash-logo">
+        <span class="dash-title">E-Campus</span>
+    </div>
+    <a href="student-dashboard.html" class="back-nav">← Back to Dashboard</a>
+</header>
+
+<main class="page-main">
+    <div class="page-header"><h1>My Attendance</h1></div>
+
+    <div class="stat-row">
+        <div class="stat-box"><div class="stat-number" id="presentCount">-</div><div class="stat-label">Present</div></div>
+        <div class="stat-box"><div class="stat-number" id="absentCount">-</div><div class="stat-label">Absent</div></div>
+        <div class="stat-box"><div class="stat-number" id="lateCount">-</div><div class="stat-label">Late</div></div>
+    </div>
+
+    <div class="attendance-card">
+        <div id="attendanceList"><p class="dash-empty">Loading...</p></div>
+    </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../supabase-config.js"></script>
+<script>
+    async function loadAttendance() {
+        const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+        if (userError || !user) { window.location.href = 'student-login.html'; return; }
+
+        const { data: studentData } = await supabaseClient
+            .from('students').select('admission_no').eq('id', user.id).single();
+
+        const listEl = document.getElementById('attendanceList');
+
+        if (!studentData || !studentData.admission_no) {
+            listEl.innerHTML = '<p class="dash-empty">No attendance records found for your account yet.</p>';
+            return;
+        }
+
+        const { data: records } = await supabaseClient
+            .from('class_attendance')
+            .select('*')
+            .eq('student_id', studentData.admission_no)
+            .order('check_in_time', { ascending: false });
+
+        if (!records || records.length === 0) {
+            listEl.innerHTML = '<p class="dash-empty">No attendance records yet.</p>';
+            document.getElementById('presentCount').textContent = 0;
+            document.getElementById('absentCount').textContent = 0;
+            document.getElementById('lateCount').textContent = 0;
+            return;
+        }
+
+        document.getElementById('presentCount').textContent = records.filter(r => r.status === 'present').length;
+        document.getElementById('absentCount').textContent = records.filter(r => r.status === 'absent').length;
+        document.getElementById('lateCount').textContent = records.filter(r => r.status === 'late').length;
+
+        listEl.innerHTML = records.map(r => `
+            <div class="attendance-item">
+                <span class="attendance-date">${new Date(r.check_in_time).toLocaleDateString()} — ${new Date(r.check_in_time).toLocaleTimeString()}</span>
+                <span class="status-badge status-${r.status}">${r.status}</span>
+            </div>
+        `).join('');
+    }
+
+    loadAttendance();
+</script>
+
+</body>
+</html>
