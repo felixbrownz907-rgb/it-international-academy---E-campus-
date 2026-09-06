@@ -1,0 +1,137 @@
+/* =====================================================
+   E-CAMPUS - STUDENT DASHBOARD
+   ===================================================== */
+
+body {
+    background: #f5f7fa;
+}
+
+.dash-header {
+    width: 100%;
+    min-height: 72px;
+    background: #0A1628;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 6%;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.dash-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.dash-logo {
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+    border-radius: 6px;
+}
+
+.dash-title {
+    color: #ffffff;
+    font-family: 'Poppins', 'Inter', Arial, sans-serif;
+    font-weight: 600;
+    font-size: 18px;
+}
+
+.dash-user {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+#studentName {
+    color: #B8C4D0;
+    font-size: 14px;
+}
+
+.logout-button {
+    background: transparent;
+    border: 1px solid #4FC3E8;
+    color: #4FC3E8;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.25s ease;
+}
+
+.logout-button:hover {
+    background: #4FC3E8;
+    color: #0A1628;
+}
+
+.dash-main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 6%;
+}
+
+.welcome-banner {
+    background: linear-gradient(135deg, #0A1628 0%, #1E5A8C 100%);
+    color: #ffffff;
+    padding: 32px;
+    border-radius: 16px;
+    margin-bottom: 30px;
+}
+
+.welcome-banner h1 {
+    font-size: 24px;
+    margin-bottom: 8px;
+}
+
+.welcome-banner p {
+    color: #B8C4D0;
+    font-size: 14px;
+}
+
+.dash-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+.dash-card {
+    background: #ffffff;
+    border: 1px solid #dbe2ea;
+    border-radius: 14px;
+    padding: 24px;
+}
+
+.dash-card h3 {
+    font-size: 17px;
+    color: #0A1628;
+    margin-bottom: 14px;
+}
+
+.dash-empty {
+    color: #9aa8b8;
+    font-size: 14px;
+}
+
+@media (max-width: 900px) {
+    .dash-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 600px) {
+    .dash-header {
+        padding: 10px 5%;
+    }
+    .dash-title {
+        font-size: 16px;
+    }
+    .dash-main {
+        padding: 30px 5%;
+    }
+    .welcome-banner {
+        padding: 24px;
+    }
+}
