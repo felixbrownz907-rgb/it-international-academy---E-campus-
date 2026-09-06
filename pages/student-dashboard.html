@@ -28,14 +28,35 @@
         .dash-main { max-width: 1100px; margin: 0 auto; padding: 40px 6%; }
         .welcome-banner {
             background: linear-gradient(135deg, #0A1628 0%, #1E5A8C 100%);
-            color: #ffffff; padding: 32px; border-radius: 16px; margin-bottom: 30px;
+            color: #ffffff; padding: 32px; border-radius: 16px; margin-bottom: 20px;
         }
         .welcome-banner h1 { font-size: 24px; margin-bottom: 8px; }
         .welcome-banner p { color: #B8C4D0; font-size: 14px; }
+
+        .fee-card {
+            background: #ffffff; border: 2px solid #ffd6d6; border-radius: 16px;
+            padding: 24px; margin-bottom: 20px;
+        }
+        .fee-card h3 { font-size: 16px; color: #0A1628; margin-bottom: 16px; }
+        .fee-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; }
+        .fee-label { color: #5a6b7d; }
+        .fee-balance { color: #c0392b; font-weight: 700; }
+
+        .stat-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px;
+        }
+        .stat-box {
+            background: #ffffff; border: 1px solid #dbe2ea; border-radius: 14px;
+            padding: 18px; text-align: center;
+        }
+        .stat-number { font-size: 24px; font-weight: 700; color: #0A1628; }
+        .stat-label { font-size: 12px; color: #5a6b7d; margin-top: 4px; }
+
         .dash-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-        .dash-card { background: #ffffff; border: 1px solid #dbe2ea; border-radius: 14px; padding: 24px; }
+        .dash-card { background: #ffffff; border: 1px solid #dbe2ea; border-radius: 14px; padding: 24px; margin-bottom: 20px; }
         .dash-card h3 { font-size: 17px; color: #0A1628; margin-bottom: 14px; }
         .dash-empty { color: #9aa8b8; font-size: 14px; }
+
         .course-item {
             display: flex; justify-content: space-between; align-items: center;
             padding: 12px 0; border-bottom: 1px solid #eef1f4;
@@ -49,7 +70,17 @@
             font-weight: 600; cursor: pointer; text-decoration: none;
         }
         .view-button:hover { background: #1E5A8C; }
-        @media (max-width: 900px) { .dash-grid { grid-template-columns: 1fr; } }
+
+        .activity-item { padding: 10px 0; border-bottom: 1px solid #eef1f4; font-size: 13px; color: #0A1628; }
+        .activity-item:last-child { border-bottom: none; }
+        .activity-date { color: #9aa8b8; font-size: 11px; }
+
+        .announcement-item { padding: 12px 0; border-bottom: 1px solid #eef1f4; }
+        .announcement-item:last-child { border-bottom: none; }
+        .announcement-title { font-weight: 600; font-size: 14px; color: #0A1628; }
+        .announcement-date { color: #9aa8b8; font-size: 12px; margin-top: 4px; }
+
+        @media (max-width: 900px) { .dash-grid { grid-template-columns: 1fr; } .stat-grid { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 600px) {
             .dash-header { padding: 10px 5%; }
             .dash-title { font-size: 16px; }
@@ -78,25 +109,28 @@
         <p>Keep going — every unit you complete brings you closer to the next level.</p>
     </section>
 
-    <section class="dash-grid">
+    <div id="feeCardContainer"></div>
 
+    <div class="stat-grid">
+        <div class="stat-box"><div class="stat-number" id="statCourses">-</div><div class="stat-label">Courses</div></div>
+        <div class="stat-box"><div class="stat-number" id="statAssignments">-</div><div class="stat-label">Assignments</div></div>
+        <div class="stat-box"><div class="stat-number" id="statQuizzes">-</div><div class="stat-label">Quizzes</div></div>
+        <div class="stat-box"><div class="stat-number" id="statProgress">-</div><div class="stat-label">Progress</div></div>
+    </div>
+
+    <section class="dash-grid">
         <div class="dash-card">
             <h3>My Courses</h3>
-            <div id="coursesList">
-                <p class="dash-empty">Loading...</p>
-            </div>
+            <div id="coursesList"><p class="dash-empty">Loading...</p></div>
         </div>
-
-        <div class="dash-card">
-            <h3>Assignments Due</h3>
-            <p class="dash-empty">No assignments due.</p>
-        </div>
-
         <div class="dash-card">
             <h3>Recent Activity</h3>
-            <p class="dash-empty">Nothing to show yet.</p>
+            <div id="activityList"><p class="dash-empty">Loading...</p></div>
         </div>
-
+        <div class="dash-card">
+            <h3>Announcements</h3>
+            <div id="announcementsList"><p class="dash-empty">Loading...</p></div>
+        </div>
     </section>
 
 </main>
@@ -104,44 +138,62 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../supabase-config.js"></script>
 <script>
-    let currentStudentId = null;
+    let currentStudent = null;
 
     async function loadDashboard() {
         const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-
-        if (userError || !user) {
-            window.location.href = 'student-login.html';
-            return;
-        }
+        if (userError || !user) { window.location.href = 'student-login.html'; return; }
 
         const { data: studentData, error: studentError } = await supabaseClient
-            .from('students')
-            .select('*')
-            .eq('id', user.id)
-            .single();
+            .from('students').select('*').eq('id', user.id).single();
 
-        if (studentError || !studentData) {
-            window.location.href = 'student-login.html';
-            return;
-        }
+        if (studentError || !studentData) { window.location.href = 'student-login.html'; return; }
 
-        currentStudentId = studentData.id;
+        currentStudent = studentData;
         document.getElementById('studentName').textContent = studentData.full_name;
         document.getElementById('welcomeText').textContent = `Welcome back, ${studentData.full_name.split(' ')[0]}`;
 
+        loadFees();
         loadCourses();
+        loadActivity();
+        loadAnnouncements();
+    }
+
+    async function loadFees() {
+        if (!currentStudent.admission_no) return;
+
+        const { data: paymentRows } = await supabaseClient
+            .from('payments')
+            .select('amount, balance')
+            .eq('student_id', currentStudent.admission_no)
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+        const container = document.getElementById('feeCardContainer');
+        if (!paymentRows || paymentRows.length === 0) return;
+
+        const latest = paymentRows[0];
+        container.innerHTML = `
+            <div class="fee-card">
+                <h3>💳 My Fees</h3>
+                <div class="fee-row"><span class="fee-label">Amount Paid</span><span>K${latest.amount}</span></div>
+                <div class="fee-row"><span class="fee-label">Balance</span><span class="fee-balance">K${latest.balance}</span></div>
+            </div>
+        `;
     }
 
     async function loadCourses() {
-        const { data: enrollments, error } = await supabaseClient
+        const { data: enrollments } = await supabaseClient
             .from('ecampus_enrollments')
             .select('course_id, courses(id, name, department, duration)')
-            .eq('student_id', currentStudentId);
+            .eq('student_id', currentStudent.id);
 
         const listEl = document.getElementById('coursesList');
+        document.getElementById('statCourses').textContent = enrollments?.length || 0;
 
-        if (error || !enrollments || enrollments.length === 0) {
+        if (!enrollments || enrollments.length === 0) {
             listEl.innerHTML = '<p class="dash-empty">No courses assigned yet.</p>';
+            document.getElementById('statProgress').textContent = '0%';
             return;
         }
 
@@ -152,6 +204,100 @@
                     <div class="course-meta">${e.courses.department || ''} · ${e.courses.duration || ''}</div>
                 </div>
                 <a href="course.html?id=${e.courses.id}" class="view-button">Open</a>
+            </div>
+        `).join('');
+
+        loadOverallProgress(enrollments.map(e => e.course_id));
+        loadAssignmentsAndQuizzes(enrollments.map(e => e.course_id));
+    }
+
+    async function loadOverallProgress(courseIds) {
+        const { data: units } = await supabaseClient
+            .from('units').select('id').in('course_id', courseIds);
+
+        if (!units || units.length === 0) { document.getElementById('statProgress').textContent = '0%'; return; }
+
+        const unitIds = units.map(u => u.id);
+        const { data: topics } = await supabaseClient
+            .from('topics').select('id').in('unit_id', unitIds);
+
+        const totalTopics = topics?.length || 0;
+        if (totalTopics === 0) { document.getElementById('statProgress').textContent = '0%'; return; }
+
+        const { data: progress } = await supabaseClient
+            .from('ecampus_topic_progress')
+            .select('completed')
+            .eq('student_id', currentStudent.id)
+            .eq('completed', true);
+
+        const completedCount = progress?.length || 0;
+        const pct = Math.round((completedCount / totalTopics) * 100);
+        document.getElementById('statProgress').textContent = pct + '%';
+    }
+
+    async function loadAssignmentsAndQuizzes(courseIds) {
+        const { data: units } = await supabaseClient
+            .from('units').select('id').in('course_id', courseIds);
+
+        const unitIds = units?.map(u => u.id) || [];
+
+        if (unitIds.length === 0) {
+            document.getElementById('statAssignments').textContent = 0;
+            document.getElementById('statQuizzes').textContent = 0;
+            return;
+        }
+
+        const { data: assignments } = await supabaseClient
+            .from('assignments').select('id').in('unit_id', unitIds);
+        document.getElementById('statAssignments').textContent = assignments?.length || 0;
+
+        const { data: quizzes } = await supabaseClient
+            .from('quizzes').select('id').in('unit_id', unitIds);
+        document.getElementById('statQuizzes').textContent = quizzes?.length || 0;
+    }
+
+    async function loadActivity() {
+        const { data: progress } = await supabaseClient
+            .from('ecampus_topic_progress')
+            .select('completed_at, topics(title)')
+            .eq('student_id', currentStudent.id)
+            .eq('completed', true)
+            .order('completed_at', { ascending: false })
+            .limit(6);
+
+        const listEl = document.getElementById('activityList');
+
+        if (!progress || progress.length === 0) {
+            listEl.innerHTML = '<p class="dash-empty">Nothing to show yet.</p>';
+            return;
+        }
+
+        listEl.innerHTML = progress.map(p => `
+            <div class="activity-item">
+                ✅ Completed "${p.topics?.title || 'a topic'}"
+                <div class="activity-date">${new Date(p.completed_at).toLocaleDateString()}</div>
+            </div>
+        `).join('');
+    }
+
+    async function loadAnnouncements() {
+        const { data: announcements } = await supabaseClient
+            .from('announcements')
+            .select('*')
+            .order('date', { ascending: false })
+            .limit(5);
+
+        const listEl = document.getElementById('announcementsList');
+
+        if (!announcements || announcements.length === 0) {
+            listEl.innerHTML = '<p class="dash-empty">No announcements.</p>';
+            return;
+        }
+
+        listEl.innerHTML = announcements.map(a => `
+            <div class="announcement-item">
+                <div class="announcement-title">📣 ${a.title}</div>
+                <div class="announcement-date">${new Date(a.date || a.created_at).toLocaleDateString()}</div>
             </div>
         `).join('');
     }
