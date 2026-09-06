@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | E-Campus</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+
+<header class="dash-header">
+    <div class="dash-brand">
+        <img
+            src="https://pub-b3e2d39712e84119875e84c5ec5f5c09.r2.dev/Logo/WA_1788713784402.jpeg"
+            alt="IT International Academy Logo"
+            class="dash-logo"
+        >
+        <span class="dash-title">E-Campus</span>
+    </div>
+    <div class="dash-user">
+        <span id="studentName">Loading...</span>
+        <button id="logoutBtn" class="logout-button">Logout</button>
+    </div>
+</header>
+
+<main class="dash-main">
+
+    <section class="welcome-banner">
+        <h1 id="welcomeText">Welcome back</h1>
+        <p>Keep going — every unit you complete brings you closer to the next level.</p>
+    </section>
+
+    <section class="dash-grid">
+
+        <div class="dash-card">
+            <h3>My Units</h3>
+            <p class="dash-empty">No units assigned yet.</p>
+        </div>
+
+        <div class="dash-card">
+            <h3>Assignments Due</h3>
+            <p class="dash-empty">No assignments due.</p>
+        </div>
+
+        <div class="dash-card">
+            <h3>Recent Activity</h3>
+            <p class="dash-empty">Nothing to show yet.</p>
+        </div>
+
+    </section>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../supabase-config.js"></script>
+<script src="student-dashboard.js"></script>
+
+</body>
+</html>
