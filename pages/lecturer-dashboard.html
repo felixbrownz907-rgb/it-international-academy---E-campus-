@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecturer Dashboard | E-Campus</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        body { background: #f5f7fa; }
+        .dash-header {
+            width: 100%; min-height: 72px; background: #0A1628;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 12px 6%; position: sticky; top: 0; z-index: 1000;
+        }
+        .dash-brand { display: flex; align-items: center; gap: 12px; }
+        .dash-logo { width: 44px; height: 44px; object-fit: contain; border-radius: 6px; }
+        .dash-title { color: #ffffff; font-family: 'Poppins', 'Inter', Arial, sans-serif; font-weight: 600; font-size: 18px; }
+        .dash-user { display: flex; align-items: center; gap: 16px; }
+        #lecturerName { color: #B8C4D0; font-size: 14px; }
+        .logout-button {
+            background: transparent; border: 1px solid #4FC3E8; color: #4FC3E8;
+            padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
+            cursor: pointer;
+        }
+        .logout-button:hover { background: #4FC3E8; color: #0A1628; }
+        .dash-main { max-width: 1100px; margin: 0 auto; padding: 40px 6%; }
+        .welcome-banner {
+            background: linear-gradient(135deg, #0A1628 0%, #1E5A8C 100%);
+            color: #ffffff; padding: 32px; border-radius: 16px; margin-bottom: 20px;
+        }
+        .welcome-banner h1 { font-size: 24px; margin-bottom: 8px; }
+        .welcome-banner p { color: #B8C4D0; font-size: 14px; }
+        .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
+        .stat-box { background: #ffffff; border: 1px solid #dbe2ea; border-radius: 14px; padding: 18px; text-align: center; }
+        .stat-number { font-size: 24px; font-weight: 700; color: #0A1628; }
+        .stat-label { font-size: 12px; color: #5a6b7d; margin-top: 4px; }
+        .dash-card { background: #ffffff; border: 1px solid #dbe2ea; border-radius: 14px; padding: 24px; margin-bottom: 20px; }
+        .dash-card h3 { font-size: 17px; color: #0A1628; margin-bottom: 14px; }
+        .dash-empty { color: #9aa8b8; font-size: 14px; }
+        .unit-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 0; border-bottom: 1px solid #eef1f4;
+        }
+        .unit-row:last-child { border-bottom: none; }
+        .unit-name { font-weight: 600; color: #0A1628; font-size: 14px; }
+        .view-button {
+            background: #0A1628; color: #ffffff; border: none;
+            padding: 6px 14px; border-radius: 6px; font-size: 12px;
+            font-weight: 600; cursor: pointer; text-decoration: none;
+        }
+        .view-button:hover { background: #1E5A8C; }
+        @media (max-width: 900px) { .stat-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 600px) {
+            .dash-header { padding: 10px 5%; }
+            .dash-title { font-size: 16px; }
+            .dash-main { padding: 30px 5%; }
+            .welcome-banner { padding: 24px; }
+        }
+    </style>
+</head>
+<body>
+
+<header class="dash-header">
+    <div class="dash-brand">
+        <img src="https://pub-b3e2d39712e84119875e84c5ec5f5c09.r2.dev/Logo/WA_1788713784402.jpeg" alt="Logo" class="dash-logo">
+        <span class="dash-title">E-Campus</span>
+    </div>
+    <div class="dash-user">
+        <span id="lecturerName">Loading...</span>
+        <button id="logoutBtn" class="logout-button">Logout</button>
+    </div>
+</header>
+
+<main class="dash-main">
+
+    <section class="welcome-banner">
+        <h1 id="welcomeText">Welcome back</h1>
+        <p id="courseText">Loading your course...</p>
+    </section>
+
+    <div class="stat-grid">
+        <div class="stat-box"><div class="stat-number" id="statUnits">-</div><div class="stat-label">Units</div></div>
+        <div class="stat-box"><div class="stat-number" id="statAssignments">-</div><div class="stat-label">Assignments</div></div>
+        <div class="stat-box"><div class="stat-number" id="statSubmissions">-</div><div class="stat-label">Pending Submissions</div></div>
+    </div>
+
+    <div class="dash-card">
+        <h3>Course Units</h3>
+        <div id="unitsList"><p class="dash-empty">Loading...</p></div>
+    </div>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../supabase-config.js"></script>
+<script>
+    let currentLecturer = null;
+    let currentCourse = null;
+
+    async function loadDashboard() {
+        const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+        if (userError || !user) { window.location.href = 'lecturer-login.html'; return; }
+
+        const { data: lecturerData, error: lecturerError } = await supabaseClient
+            .from('lecturers').select('*').eq('auth_id', user.id).single();
+
+        if (lecturerError || !lecturerData) { window.location.href = 'lecturer-login.html'; return; }
+
+        currentLecturer = lecturerData;
+        document.getElementById('lecturerName').textContent = lecturerData.name;
+        document.getElementById('welcomeText').textContent = `Welcome back, ${lecturerData.name.split(' ')[0]}`;
+        document.getElementById('courseText').textContent = `Course: ${lecturerData.course_name}`;
+
+        const { data: courseData } = await supabaseClient
+            .from('courses').select('*').eq('name', lecturerData.course_name).single();
+
+        currentCourse = courseData;
+        if (!currentCourse) {
+            document.getElementById('unitsList').innerHTML = '<p class="dash-empty">Course not found in system.</p>';
+            return;
+        }
+
+        loadUnits();
+    }
+
+    async function loadUnits() {
+        const { data: units } = await supabaseClient
+            .from('units')
+            .select('id, title, order_index, topics(id), assignments(id)')
+            .eq('course_id', currentCourse.id)
+            .order('order_index');
+
+        const listEl = document.getElementById('unitsList');
+        document.getElementById('statUnits').textContent = units?.length || 0;
+
+        let totalAssignments = 0;
+        (units || []).forEach(u => totalAssignments += (u.assignments?.length || 0));
+        document.getElementById('statAssignments').textContent = totalAssignments;
+
+        loadPendingSubmissions(units?.map(u => u.id) || []);
+
+        if (!units || units.length === 0) {
+            listEl.innerHTML = '<p class="dash-empty">No units created yet.</p>';
+            return;
+        }
+
+        listEl.innerHTML = units.map(u => `
+            <div class="unit-row">
+                <span class="unit-name">${u.title} (${u.topics?.length || 0} topics)</span>
+                <a href="manage-unit.html?id=${u.id}" class="view-button">Manage</a>
+            </div>
+        `).join('');
+    }
+
+    async function loadPendingSubmissions(unitIds) {
+        if (unitIds.length === 0) { document.getElementById('statSubmissions').textContent = 0; return; }
+
+        const { data: assignments } = await supabaseClient
+            .from('assignments').select('id').in('unit_id', unitIds);
+
+        const assignmentIds = assignments?.map(a => a.id) || [];
+        if (assignmentIds.length === 0) { document.getElementById('statSubmissions').textContent = 0; return; }
+
+        const { data: pending } = await supabaseClient
+            .from('ecampus_submissions')
+            .select('id')
+            .in('assignment_id', assignmentIds)
+            .eq('status', 'submitted');
+
+        document.getElementById('statSubmissions').textContent = pending?.length || 0;
+    }
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+        await supabaseClient.auth.signOut();
+        window.location.href = 'lecturer-login.html';
+    });
+
+    loadDashboard();
+</script>
+
+</body>
+</html>
